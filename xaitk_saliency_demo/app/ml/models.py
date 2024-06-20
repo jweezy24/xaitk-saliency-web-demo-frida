@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+from .frida_connection import *
+
 # xaitk-saliency
 from smqtk_detection.impls.detect_image_objects.resnet_frcnn import ResNetFRCNN
 from smqtk_detection.impls.detect_image_objects.centernet import CenterNetVisdrone
@@ -48,6 +50,7 @@ __all__ = [
     "ClassificationResNet50",
     "ClassificationAlexNet",
     "ClassificationVgg16",
+    "ClassificationInstagram",
     # similarity -----------
     "SimilarityResNet50",
     "SimilarityAlexNet",
@@ -86,9 +89,15 @@ class AbstractModel:
         if isinstance(model, torch.nn.Module):
             self._model = model.to(self._device)
             self._model.eval()
+        elif isinstance(model, frida_model):
+            self._model = model
+
 
     def __call__(self, *args, **kwargs):
-        return self._model(*args, **kwargs)
+        if isinstance(self.model,frida_model):
+            return self.model.predict(*args, **kwargs)
+        else:
+            return self._model(*args, **kwargs)
 
     @property
     def device(self):
@@ -121,6 +130,7 @@ class ResNetPredict:
         return output.cpu().numpy()
 
 
+
 class ClassificationRun:
     def run(self, input, *_):
         preds = self.predict(input)
@@ -130,6 +140,23 @@ class ClassificationRun:
 
         # store for later
         self.topk = topk
+
+        logger.info(f"Predicted classes: {output}")
+        return {
+            "type": "classification",
+            "topk": topk,
+            "classes": output,
+        }
+    
+class ClassificationRunFrida:
+    def run(self, input, *_):
+        preds,labels = self.predict(input)
+        preds = np.array(preds)
+        topk = np.argsort(preds)[-self.state.TOP_K :]
+        output = [(labels[i], preds[i]) for i in topk]
+
+        # store for later
+        self.topk = topk[::-1]
 
         logger.info(f"Predicted classes: {output}")
         return {
@@ -152,6 +179,13 @@ class ClassificationAlexNet(AbstractModel, ResNetPredict, ClassificationRun):
 class ClassificationVgg16(AbstractModel, ResNetPredict, ClassificationRun):
     def __init__(self, server):
         super().__init__(server, models.vgg16(pretrained=True))
+
+class ClassificationInstagram(AbstractModel, ClassificationRunFrida):
+    def __init__(self, server):
+        super().__init__(server, frida_model())
+
+    def predict(self,image):
+        return self.model.predict(image)
 
 
 # -----------------------------------------------------------------------------

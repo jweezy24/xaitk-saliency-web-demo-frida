@@ -105,7 +105,7 @@ class Toolbar:
             v_show=("['classification', 'detection'].includes(task_active)",),
             label="Top classes",
             v_model=("TOP_K", 5),
-            items=("TOP_K_available", list(range(5, 11))),
+            items=("TOP_K_available", list(range(5, 51))),
             **config.STYLE_COMPACT,
             style="max-width: 70px",
             classes="mr-4",

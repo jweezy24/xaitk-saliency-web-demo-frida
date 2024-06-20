@@ -1,6 +1,7 @@
 from typing import Dict, Any, Iterable
 import numpy as np
 from scipy.special import softmax
+from .frida_connection import *
 
 # pytorch
 import torch
@@ -23,6 +24,7 @@ from smqtk_descriptors.interfaces.image_descriptor_generator import (
     ImageDescriptorGenerator,
 )
 from smqtk_detection import DetectImageObjects
+from .models import ClassificationInstagram
 
 # labels
 from .assets import imagenet_categories, imagenet_model_loader
@@ -70,15 +72,24 @@ class ClfModel(ClassifyImage):
         self.idx = idx
 
     def get_labels(self):
-        return [imagenet_categories[i] for i in self.idx]
+        if isinstance(self.model,ClassificationInstagram):
+            return [self.model.model.t_labels[i] for i in self.idx]
+        else: 
+            return [imagenet_categories[i] for i in self.idx]
 
     @torch.no_grad()
     def classify_images(self, image_iter):
-        for img in image_iter:
-            inp = imagenet_model_loader(img).unsqueeze(0).to(self.model.device)
-            vec = self.model(inp).cpu().numpy().squeeze()
-            out = softmax(vec)
-            yield dict(zip(self.get_labels(), out[self.idx]))
+        if isinstance(self.model,ClassificationInstagram):
+            for img in image_iter:
+                outs,labels = self.model.predict(img)
+                outs= np.array(outs)
+                yield dict(zip(self.get_labels(), outs[self.idx]))
+        else:
+            for img in image_iter:
+                inp = imagenet_model_loader(img).unsqueeze(0).to(self.model.device)
+                vec = self.model(inp).cpu().numpy().squeeze()
+                out = softmax(vec)
+                yield dict(zip(self.get_labels(), out[self.idx]))
 
     def get_config(self):
         # Required by a parent class. Will not be used in this context.
@@ -126,6 +137,7 @@ class ClassificationSaliency(Saliency):
         topk = self._model.topk
         self._saliency.fill = FILL
         sal = self._saliency(input, ClfModel(self._model, topk))
+        print(sal)
         return {
             "type": "classification",
             "saliency": sal,

@@ -106,13 +106,17 @@ class XaitkSaliency:
 
     def run_saliency(self):
         if self._xaitk_config is None:
+            print("CONFIG IS NONE")
             return {}
 
         # Create saliency and run it
         xaitk = get_saliency(self._task, self._model, **self._xaitk_config)
+        print(xaitk)
         self.state.xai_ready = True
-        return xaitk.run(self._image_1, self._image_2)
-
+        res = xaitk.run(self._image_1, self._image_2)
+        print(res)
+        return res
+    
     # -----------------------------------------------------
     # Exec API
     # -----------------------------------------------------
@@ -134,6 +138,7 @@ class XaitkSaliency:
         if self.state.saliency_active in config.SALIENCY_PARAMS:
             for name in config.SALIENCY_PARAMS[self.state.saliency_active]:
                 value = self.state[f"xai_param__{name}"]
+                print(name,value)
                 convert = config.ALL_SALIENCY_PARAMS[name]
                 if isinstance(value, list):
                     params[name] = [convert(v) for v in value]
@@ -161,14 +166,17 @@ class XaitkSaliency:
 
         # We don't have input to deal with
         if not self.state.input_1_img_url:
+            print("HERE")
             return
 
         results = {}
 
         if self.can_run():
+            print("HERE")
             results = self.run_model()
 
         # classes
+        print(results)
         classes = results.get("classes", [])
         df = pd.DataFrame(classes, columns=["Class", "Score"])
         df.sort_values("Score", ascending=True, inplace=True)

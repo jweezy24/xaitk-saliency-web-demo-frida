@@ -44,6 +44,7 @@ TASK_DEPENDENCY = {
             {"title": "ResNet-50", "value": "ClassificationResNet50"},
             {"title": "AlexNet", "value": "ClassificationAlexNet"},
             {"title": "VGG-16", "value": "ClassificationVgg16"},
+            {"title": "Instagram", "value": "ClassificationInstagram"},
         ],
         # Task => input
         "input_expected": 1,
